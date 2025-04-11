@@ -1,0 +1,27 @@
+import { ytdl } from 'jer-api'
+
+let handler = async (m, { command, q, conn, prefix, setReply }) => {
+  if (!q || !q.startsWith("https")) return setReply(`Masukkan link YouTube`);
+
+  setReply(mess.wait);
+  
+  try {
+    let data = await ytdl(q);
+    let { title, thumbnail, url, quality, duration, filesize } = data;
+
+    await conn.sendMessage(m.chat, {
+      video: { url },
+      caption: `*${title}*\nQuality: ${quality}\nDuration: ${duration}\nFilesize: ${filesize}`
+    }, { quoted: m });
+
+  } catch (e) {
+    console.error(e);
+    setReply('Terjadi kesalahan saat memproses video.');
+  }
+};
+
+handler.help = ['ytmp4']
+handler.tags = ['downloader']
+handler.command = /^ytmp4$/i
+
+export default handler
