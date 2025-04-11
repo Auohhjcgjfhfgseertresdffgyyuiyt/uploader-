@@ -1,0 +1,59 @@
+/*
+Jangan Hapus Wm Bang 
+
+*Flux Ai Plugins Esm*
+
+Entah lah 
+
+*[Sumber]*
+https://whatsapp.com/channel/0029Vb3u2awADTOCXVsvia28
+
+*[Sumber Scrape]*
+
+https://whatsapp.com/channel/0029VbB0oUvBlHpYbmFDsb3E/251
+*/
+
+import axios from "axios";
+import { translate } from "bing-translate-api";
+
+const fluxGenerate = async (prompt) => {
+  if (!prompt || typeof prompt !== "string" || !prompt.trim()) {
+    throw "Masukkan prompt yang valid.";
+  }
+
+  const { data } = await axios.post(
+    "https://fluxai.pro/api/tools/fast",
+    { prompt },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        "User-Agent": "Mozilla/5.0 (compatible; FluxAI-Client/1.0)",
+        "Accept": "application/json",
+      }
+    }
+  );
+
+  return data;
+};
+
+const handler = async (m, { conn, text }) => {
+  if (!text) {
+    throw "*Example Usage :* .fluxai Buat gambar matahari terbenam di Jepang di ladang dan banyak sungai yang indah Dan Ada Perempuan Remaja Menggunakan Rok Pendek Yang Melihat Matahari nya Style Anime";
+  }
+
+  const translated = (await translate(text, null, "en").catch(() => ({})))?.translation;
+  m.reply("*Create Image*");
+
+  const res = await fluxGenerate(translated);
+  if (!res?.ok || !res.data?.imageUrl) {
+    throw "Failed to fetch image from FluxAI";
+  }
+
+  await conn.sendMessage(m.chat, { image: { url: res.data.imageUrl } }, { quoted: m });
+};
+
+handler.help = ["fluxai"];
+handler.command = ["fluxai"];
+handler.tags = ["ai"];
+
+export default handler;
