@@ -1,0 +1,58 @@
+/*
+Jangan Hapus Wm Bang 
+
+*Play  Plugins Esm*
+
+Apakah Bakal Di Comot? Entahlah 
+
+*[Sumber]*
+https://whatsapp.com/channel/0029Vb3u2awADTOCXVsvia28
+
+*[Dev Api]*
+
+https://whatsapp.com/channel/0029Vb2qO9Q5vKAGd2t7ap1F/215
+*/
+
+import axios from 'axios';
+import yts from 'yt-search';
+
+let handler = async (m, { conn, args, text, command }) => {
+  if (!text) return m.reply(`*Example :* ${command} god of war short`);
+  try {
+    let { videos } = await yts(text);
+    if (!videos.length) return m.reply('Gk Ketemu Cba Cari Yang Lain');
+
+    let video = videos[0];
+    let { data } = await axios.get(`https://api.ryzendesu.vip/api/downloader/ytmp3?url=${encodeURIComponent(video.url)}`);
+    if (!data?.url) return m.reply('Gagal Mendapatkan Reult');
+
+    await conn.sendMessage(m.chat, {
+      image: { url: data.thumbnail },
+      caption: `
+• *Title* : ${data.title}
+• *Author* : ${data.author}
+• *Author URL* : ${data.authorUrl}
+• *Duration* : ${data.lengthSeconds} detik
+• *Views* : ${data.views}
+• *Upload Date* : ${data.uploadDate}
+• *Description* : ${data.description}
+• *Quality* : ${data.quality}
+• *Video URL* : ${data.videoUrl}\n\n> Please Wait Send Audio
+`.trim()
+    }, { quoted: m });
+
+    await conn.sendMessage(m.chat, {
+      audio: { url: data.url },
+      mimetype: 'audio/mpeg'
+    }, { quoted: m });
+
+  } catch {
+    m.reply('Yah Error');
+  }
+};
+
+handler.help = ['play'].map(v => v + ' <query/link>');
+handler.command = ['play'];
+handler.tags = ['search'];
+
+export default handler;
