@@ -1,0 +1,83 @@
+import fs from 'fs'
+import path from 'path'
+import sharp from 'sharp'
+import { fileURLToPath } from 'url'
+import { tmpdir } from 'os'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+const handler = async (m, { args, conn }) => {
+  let q = m.quoted ? m.quoted : m
+  let mime = (q.msg || q).mimetype || q.mediaType || ""
+
+  if (!mime) return m.reply(`Fotonya Mana Kak?`)
+  if (!/image\/(jpe?g|png)/.test(mime)) return m.reply(`Mime ${mime} tidak support`)
+  
+
+  m.reply("Proses Kak...")
+
+  const resolutionOption = args[0]
+  if (!resolutionOption) {
+    return m.reply(`Pilih salah satu resolusi HD berikut:
+
+1 = 1080p
+2 = 2k
+3 = 4k
+4 = 8k
+5 = 16k
+`)
+  }
+
+  const resolutions = {
+    1: { label: '1080p', width: 1920, height: 1080 },
+    2: { label: '2k', width: 2560, height: 1440 },
+    3: { label: '4k', width: 3840, height: 2160 },
+    4: { label: '8k', width: 7680, height: 4320 },
+    5: { label: '16k', width: 15360, height: 8640 },
+  }
+
+  if (!resolutions[resolutionOption]) {
+    return m.reply('Pilihan tidak valid. Gunakan angka antara 1 sampai 5.')
+  }
+
+  const selected = resolutions[resolutionOption]
+  const buffer = await q.download()
+
+  const inputPath = path.join(tmpdir(), `hd-temp-${Date.now()}.jpg`)
+  const outputPath = inputPath.replace('.jpg', `_${selected.label}.jpg`)
+
+  fs.writeFileSync(inputPath, buffer)
+
+  try {
+    await sharp(inputPath)
+      .resize({
+        width: selected.width,
+        height: selected.height,
+        fit: sharp.fit.inside,
+        kernel: sharp.kernel.lanczos3,
+      })
+      .sharpen({ sigma: 2, m1: 3, m2: 1 })
+      .normalize()
+      .modulate({ saturation: 1.3, brightness: 0.85 })
+      .toFormat('jpeg', { quality: 100, progressive: true })
+      .toFile(outputPath)
+
+    await conn.sendMessage(m.chat, {
+      image: fs.readFileSync(outputPath),
+      caption: `Selesai! Foto sudah diubah ke HD ${selected.label}`,
+    }, { quoted: m })
+
+  } catch (err) {
+    console.error(err)
+    m.reply('Gagal memperbagus gambar: ' + err.message)
+  } finally {
+    if (fs.existsSync(inputPath)) fs.unlinkSync(inputPath)
+    if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath)
+  }
+}
+
+handler.help = ['hd <1|2|3|4|5>']
+handler.tags = ['tools']
+handler.command = /^hd$/i
+
+export default handler
