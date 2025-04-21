@@ -1,25 +1,48 @@
-let handler = async (m, { conn, participants, groupMetadata, onlyToko }) => {
-  if (!m.isGroup) return onlyToko(); // Menampilkan pesan jika perintah tidak dijalankan di grup
+import axios from 'axios';
 
-  // Mendapatkan admin grup
-  const groupAdmins = participants.filter(p => p.admin);
-  const listAdmin = groupAdmins.map((v, i) => `${i + 1}. @${v.id.split('@')[0]}`).join('\n');
+async function removebg(buffer) {
+    try {
+        const image = buffer.toString("base64");
+        let res = await axios.post(
+            "https://us-central1-ai-apps-prod.cloudfunctions.net/restorePhoto", {
+                image: `data:image/png;base64,${image}`,
+                model: "fb8af171cfa1616ddcf1242c093f9c46bcada5ad4cf6f2fbe8b81b330ec5c003",
+            }
+        );
+        const data = res.data?.replace(`"`, "");
+        if (!data) throw "Gagal menghapus background!";
+        return data;
+    } catch (e) {
+        throw `Error: ${e.message}`;
+    }
+}
 
-  // Mendapatkan owner grup
-  const owner = groupMetadata.owner || groupAdmins.find(p => p.admin === 'superadmin')?.id || m.chat.split`-`[0] + '@s.whatsapp.net';
+let handler = async (m, { conn }) => {
+    try {
+        await conn.sendMessage(m.chat, { text: '*[ ⏳ ] Sedang diproses, tunggu sebentar...*' }, { quoted: m });
 
-  // Menyusun teks untuk ditampilkan
-  let text = `
-*Group Admins:*
-${listAdmin}
-`.trim();
+        let q = m.quoted ? m.quoted : m;
+        let mime = (q.msg || q).mimetype || '';
+        if (!mime || !mime.startsWith('image/')) 
+            throw 'Mana Gambar Nya?.';
 
-  // Mengirim pesan ke grup dengan mention untuk admin
-  conn.sendMessage(m.chat, { text, mentions: [...groupAdmins.map(v => v.id), owner] }, { quoted: m });
+        let media = await q.download();
+        let resultUrl = await removebg(media);
+
+        await conn.sendMessage(m.chat, { text: '*[ ✅ ] Berhasil! Mengirim gambar hasil...*' }, { quoted: m });
+
+        await conn.sendMessage(m.chat, { 
+            image: { url: resultUrl }
+        }, { quoted: m });
+
+    } catch (error) {
+        await conn.sendMessage(m.chat, { text: `❌ *Error:* ${error}` }, { quoted: m });
+    }
 };
 
-handler.help = ['tagadmin', 'listadmin'];
-handler.tags = ['group'];
-handler.command = /^(tagadmin|listadmin)$/i;
+handler.help = ['removebg'];
+handler.command = ['removebg', 'rbg'];
+handler.tags = ['tools'];
+handler.limit = false;
 
 export default handler;
