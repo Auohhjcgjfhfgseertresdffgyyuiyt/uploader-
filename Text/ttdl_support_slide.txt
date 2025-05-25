@@ -1,0 +1,86 @@
+/* 
+• Plugins Tiktok Downloader Hd
+• Source: https://whatsapp.com/channel/0029VakezCJDp2Q68C61RH2C
+• Source Scrape: https://whatsapp.com/channel/0029VadFS3r89inc7Jjus03W
+*/
+
+import axios from 'axios'
+
+async function tikwm(url, type = '') {
+  const result = {
+    metadata: {},
+    type: '',
+    download: {}
+  }
+
+  try {
+    if (!url.includes('tiktok')) throw 'Gada link Tiktok valid yang dimasukkan!'
+
+    const apiUrl = `https://tikwm.com/api/?url=${url}${type === 'hd' ? '&count=12&cursor=0&web=1&hd=1' : ''}`
+    const { data } = await axios.post(apiUrl, { timeout: 50000 })
+    const res = data.data
+
+    result.metadata = {
+      title: res.title || '',
+      id: res.id || '',
+      region: res.region || '',
+      duration: res.duration || '',
+      author: res.author?.nickname || res.author || 'Tidak diketahui'
+    }
+
+    if (res.images && Array.isArray(res.images)) {
+      result.type = 'image'
+      result.download = res.images
+    } else {
+      result.type = 'video'
+      result.download = {
+        url: type === 'hd' ? 'https://tikwm.com' + res.hdplay : 'https://tikwm.com' + res.play
+      }
+    }
+
+    return result
+  } catch (e) {
+    return { msg: typeof e === 'string' ? e : 'Gagal mengambil data dari Tikwm' }
+  }
+}
+
+const handler = async (m, { conn, text, command }) => {
+  if (!text) return m.reply('Masukkan URL Tiktok yang valid!')
+
+  // Ganti react dengan reply biasa
+  m.reply('Sedang memproses video dari Tiktok, mohon tunggu...')
+
+  const isHD = command.toLowerCase().includes('hd')
+  const res = await tikwm(text, isHD ? 'hd' : '')
+
+  if (res.msg) return m.reply(res.msg)
+
+  const { title, duration, author } = res.metadata
+
+  if (res.type === 'image') {
+    for (let i = 0; i < res.download.length; i++) {
+      await conn.sendMessage(m.chat, {
+        image: { url: res.download[i] },
+        caption: `📷 Slide ${i + 1}\n\n📌 ${title || 'Tanpa Judul'}\n👤 ${author}\n⏱️ Durasi: ${duration || '-'}s\n_Credit: dxyz_`
+      }, { quoted: m })
+    }
+  } else if (res.type === 'video') {
+    const videoURL = res.download.url
+    const buffer = await axios.get(videoURL, { responseType: 'arraybuffer' })
+
+    await conn.sendMessage(m.chat, {
+      video: buffer.data,
+      caption: `🎬 *${title || 'Tanpa Judul'}*\n👤 ${author}\n⏱️ Durasi: ${duration || '-'}s\n`
+    }, { quoted: m })
+  } else {
+    m.reply('Gagal mendeteksi tipe media.')
+  }
+}
+
+handler.help = ['tiktok', 'tiktokhd']
+handler.tags = ['downloader']
+handler.command = /^tiktok(hd)?$/i
+handler.limit = false
+handler.premium = false
+
+export default handler
