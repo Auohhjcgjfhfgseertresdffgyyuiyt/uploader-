@@ -1,0 +1,24 @@
+let handler = async (m, { conn, text }) => {
+  let user
+  if (m.quoted) {
+    user = m.quoted.sender
+  } else if (m.mentionedJid?.length) {
+    user = m.mentionedJid[0]
+  } else {
+    user = m.sender
+  }
+
+  try {
+    let url = await conn.profilePictureUrl(user, 'image')
+    conn.sendFile(m.chat, url, 'pp.jpg', `Nih PP-nya kak 😁`, m)
+  } catch {
+    m.reply('❌ Tidak dapat mengambil foto profil.')
+  }
+}
+
+handler.help = ['getpp']
+handler.tags = ['main']
+handler.command = /^(getpp|getppwa|getprofile)$/i
+handler.limit = true
+
+export default handler
